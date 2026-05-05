@@ -1,4 +1,11 @@
-:80 {
+{
+    admin off
+    storage file_system {
+        root /tmp
+    }
+}
+
+:8080 {
     @from_https header X-Forwarded-Proto https
     @from_http  header X-Forwarded-Proto http
 

@@ -10,7 +10,7 @@ A lightweight reverse proxy Docker image built on [Caddy](https://caddyserver.co
 
 ## How it works
 
-The proxy listens on port `80` and inspects the `X-Forwarded-Proto` header set by an upstream load balancer or ingress controller to determine how to reach the target:
+The proxy listens on port `8080` and inspects the `X-Forwarded-Proto` header set by an upstream load balancer or ingress controller to determine how to reach the target:
 
 - `X-Forwarded-Proto: https` → forwards to `TARGET_HOST:TARGET_HTTPS_PORT` over TLS
 - `X-Forwarded-Proto: http` → forwards to `TARGET_HOST:TARGET_HTTP_PORT` over plain HTTP
@@ -47,7 +47,7 @@ docker run -d \
   -e TARGET_HOST=your-target-host \
   -e TARGET_HTTP_PORT=80 \
   -e TARGET_HTTPS_PORT=443 \
-  -p 8080:80 \
+  -p 8080:8080 \
   blackswifthosting/ingress-proxy
 ```
 
@@ -58,7 +58,7 @@ Start the proxy locally targeting `www.google.com`:
 ```bash
 docker run -d --name ingress-proxy \
   -e TARGET_HOST=www.google.com \
-  -p 8080:80 \
+  -p 8080:8080 \
   blackswifthosting/ingress-proxy
 ```
 
@@ -80,6 +80,85 @@ Clean up:
 
 ```bash
 docker rm -f ingress-proxy
+```
+
+## Kubernetes
+
+The image runs as non-root (UID `65532`) and is fully compatible with [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) **restricted** namespaces out of the box — no extra configuration required.
+
+Deploy the proxy alongside a ClusterIP Service, then point your existing Ingress resource to that service to activate the forwarding. The Ingress controller will set `X-Forwarded-Proto` automatically, so the proxy knows whether to reach the target over HTTP or HTTPS.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingress-proxy
+  template:
+    metadata:
+      labels:
+        app: ingress-proxy
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: proxy
+          image: blackswifthosting/ingress-proxy:1
+          env:
+            - name: TARGET_HOST
+              value: "target.example.com"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-proxy
+spec:
+  selector:
+    app: ingress-proxy
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+  type: ClusterIP
+```
+
+Then update your Ingress to point its backend to the `ingress-proxy` service:
+
+```yaml
+rules:
+  - host: my-app.example.com
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: ingress-proxy
+              port:
+                number: 80
 ```
 
 ## Base image

@@ -7,4 +7,7 @@ ENV TARGET_HOST="www.example.tld" \
     TARGET_HTTP_PORT="80" \
     TARGET_HTTPS_PORT="443"
 
+USER 65532:65532
+EXPOSE 8080
+
 CMD ["caddy","run","-c","/etc/caddy/Caddyfile"]
