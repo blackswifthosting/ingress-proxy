@@ -119,6 +119,9 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -142,6 +145,9 @@ spec:
     - name: http
       port: 80
       targetPort: http
+    - name: metrics
+      port: 9090
+      targetPort: metrics
   type: ClusterIP
 ```
 

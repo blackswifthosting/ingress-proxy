@@ -9,7 +9,9 @@
     @from_https header X-Forwarded-Proto https
     @from_http  header X-Forwarded-Proto http
 
-    log
+    log {
+        format json
+    }
 
     handle @from_https {
         reverse_proxy https://{$TARGET_HOST}:{$TARGET_HTTPS_PORT} {
@@ -34,4 +36,8 @@
             header_up Host {host}
         }
     }
+}
+
+:9090 {
+    metrics
 }
