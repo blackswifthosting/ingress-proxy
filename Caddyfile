@@ -1,0 +1,30 @@
+:80 {
+    @from_https header X-Forwarded-Proto https
+    @from_http  header X-Forwarded-Proto http
+
+    log
+
+    handle @from_https {
+        reverse_proxy https://{$TARGET_HOST}:{$TARGET_HTTPS_PORT} {
+            header_up Host {host}
+
+            transport http {
+                tls_server_name {host}
+                tls_insecure_skip_verify
+            }
+        }
+    }
+
+    handle @from_http {
+        reverse_proxy http://{$TARGET_HOST}:{$TARGET_HTTP_PORT} {
+            header_up Host {host}
+        }
+    }
+
+    # fallback si le header est absent
+    handle {
+        reverse_proxy http://{$TARGET_HOST}:{$TARGET_HTTP_PORT} {
+            header_up Host {host}
+        }
+    }
+}

@@ -1,0 +1,47 @@
+version: "3"
+
+vars:
+  CURRENT_VERSION:
+    sh: git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"
+
+tasks:
+  version:
+    desc: Show current version
+    silent: true
+    cmd: echo "{{.CURRENT_VERSION}}"
+
+  bump:patch:
+    desc: Bump patch version (x.y.Z → x.y.Z+1) and tag
+    silent: true
+    cmds:
+      - |
+        V={{.CURRENT_VERSION}}; V=${V#v}
+        IFS='.' read -r MAJ MIN PAT <<< "$V"
+        NEW="v${MAJ}.${MIN}.$((PAT+1))"
+        git tag "$NEW"
+        echo "{{.CURRENT_VERSION}} → $NEW"
+        echo "Push with: git push origin $NEW"
+
+  bump:minor:
+    desc: Bump minor version (x.Y.z → x.Y+1.0) and tag
+    silent: true
+    cmds:
+      - |
+        V={{.CURRENT_VERSION}}; V=${V#v}
+        IFS='.' read -r MAJ MIN PAT <<< "$V"
+        NEW="v${MAJ}.$((MIN+1)).0"
+        git tag "$NEW"
+        echo "{{.CURRENT_VERSION}} → $NEW"
+        echo "Push with: git push origin $NEW"
+
+  bump:major:
+    desc: Bump major version (X.y.z → X+1.0.0) and tag
+    silent: true
+    cmds:
+      - |
+        V={{.CURRENT_VERSION}}; V=${V#v}
+        IFS='.' read -r MAJ MIN PAT <<< "$V"
+        NEW="v$((MAJ+1)).0.0"
+        git tag "$NEW"
+        echo "{{.CURRENT_VERSION}} → $NEW"
+        echo "Push with: git push origin $NEW"
